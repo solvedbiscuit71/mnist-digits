@@ -10,13 +10,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 
 from dataset_loader import training_data, test_data
 
-if torch.backends.mps.is_available():
-    mps = torch.device("mps")
-else:
+if not torch.backends.mps.is_available():
     print ("MPS device not found.")
 
 class Shallow300(nn.Module):
@@ -93,11 +90,6 @@ def train_loop(dataset, epoch=50, lr=1e-3, *, m=128, beta1=0.9, beta2=0.999, dev
             losses.append(loss)
             print(f"] loss={loss}")
 
-        plt.plot(losses)
-        plt.title("Training Curve")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.show()
     except KeyboardInterrupt:
         print("Stopping training...")
 
@@ -114,14 +106,14 @@ def evaluate(model, dataset, device="cpu"):
             labels = labels.to(device=device)
             logit = model(images)
             prob = F.softmax(logit, dim=1)
-            count += torch.sum(labels.argmax(1) == prob.argmax(1))
+            count += torch.sum(labels.argmax(1) == prob.argmax(1)).item()
             total += len(labels)
 
     print(f"{count} out of {total}")
-    return count.item() / total * 100
+    return count / total * 100
 
-model, losses = train_loop(training_data, epoch=40, lr=1e-3, device=mps)
-print("Training Accuracy:", evaluate(model, training_data, device=mps))
-print("Test Accuracy:", evaluate(model, test_data, device=mps))
+model, losses = train_loop(training_data, epoch=40, lr=1e-3, device='mps')
+print("Training Accuracy:", evaluate(model, training_data, device='mps'))
+print("Test Accuracy:", evaluate(model, test_data, device='mps'))
 
 torch.save(model.state_dict(), 'model/model_shallow_300hu.pth')
